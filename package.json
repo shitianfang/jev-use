@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit && tsc -p tsconfig.harness.json",
     "prepublishOnly": "npm run typecheck && npm test && npm run build",
     "smoke": "npm run build && node scripts/smoke.mjs",
-    "prepare": "npm run build"
+    "prepare": "command -v tsc >/dev/null 2>&1 && tsc || echo 'prepare: dev deps unavailable, skipping build'"
   },
   "keywords": [
     "jev",
