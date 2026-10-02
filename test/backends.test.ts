@@ -6,6 +6,7 @@
  */
 
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { createBackend } from "../src/backends/index.js";
 import { OpenRouterBackend } from "../src/backends/openrouter.js";
 import { TypeSafeBackend } from "../src/backends/typesafe.js";
 import { BackendError } from "../src/backends/types.js";
@@ -293,5 +294,91 @@ describe("VercelBackend", () => {
     const backend = new VercelBackend({ apiKey: "vc-test" });
     const res = await backend.judge({ state: "ticket text", questions });
     expect(res.answers[1].confidence).toBeUndefined();
+  });
+});
+
+describe("extra headers", () => {
+  it("sends options.headers on the wire alongside the backend's own auth", async () => {
+    const { calls } = mockFetchOnce(200, {
+      model: "jev-1.13",
+      answers: nativeAnswers,
+      usage: { input_tokens: 10, output_tokens: 0 },
+    });
+    const backend = new TypeSafeBackend({
+      apiKey: "sk-test",
+      headers: { "x-tenant-id": "acme" },
+    });
+    await backend.judge({ state: "state", questions });
+
+    const headers = calls[0].init.headers as Record<string, string>;
+    expect(headers["x-tenant-id"]).toBe("acme");
+    expect(headers.Authorization).toBe("Bearer sk-test");
+  });
+
+  it("applies options.headers to every retry", async () => {
+    const { calls, queue } = mockFetchOnce(200, {
+      model: "jev-1.13",
+      answers: nativeAnswers,
+    });
+    queue.unshift({ status: 500, body: { error: "boom" }, headers: {} });
+    const backend = new TypeSafeBackend({
+      apiKey: "sk-test",
+      headers: { "x-tenant-id": "acme" },
+    });
+    await backend.judge({ state: "state", questions });
+
+    expect(calls.length).toBe(2);
+    for (const call of calls) {
+      const headers = call.init.headers as Record<string, string>;
+      expect(headers["x-tenant-id"]).toBe("acme");
+    }
+  });
+
+  it("keeps the backend's own Authorization when an extra header collides", async () => {
+    const { calls } = mockFetchOnce(200, {
+      model: "jev-1.13",
+      answers: nativeAnswers,
+    });
+    const backend = new TypeSafeBackend({
+      apiKey: "sk-test",
+      headers: { Authorization: "Bearer spoofed" },
+    });
+    await backend.judge({ state: "state", questions });
+
+    const headers = calls[0].init.headers as Record<string, string>;
+    expect(headers.Authorization).toBe("Bearer sk-test");
+  });
+
+  it("createBackend passes JEV_EXTRA_HEADERS through to the wire", async () => {
+    const { calls } = mockFetchOnce(200, {
+      model: "jev-1.13",
+      answers: nativeAnswers,
+    });
+    const { backend } = createBackend(undefined, {
+      TYPESAFE_API_KEY: "sk-test",
+      JEV_EXTRA_HEADERS: '{"x-tenant-id":"acme"}',
+    });
+    await backend.judge({ state: "state", questions });
+
+    const headers = calls[0].init.headers as Record<string, string>;
+    expect(headers["x-tenant-id"]).toBe("acme");
+  });
+
+  it("rejects a JEV_EXTRA_HEADERS that is not valid JSON", () => {
+    expect(() =>
+      createBackend(undefined, {
+        TYPESAFE_API_KEY: "k",
+        JEV_EXTRA_HEADERS: "{not json",
+      }),
+    ).toThrow(/JEV_EXTRA_HEADERS must be a JSON object/);
+  });
+
+  it("rejects a JEV_EXTRA_HEADERS with non-string values", () => {
+    expect(() =>
+      createBackend(undefined, {
+        TYPESAFE_API_KEY: "k",
+        JEV_EXTRA_HEADERS: '{"x-tenant-id":42}',
+      }),
+    ).toThrow(/JEV_EXTRA_HEADERS must be a JSON object of string values/);
   });
 });

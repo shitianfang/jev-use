@@ -72,6 +72,34 @@ export function createBackend(
   );
 }
 
+/**
+ * Parse `JEV_EXTRA_HEADERS` — a JSON object whose values are all strings —
+ * into the `headers` every remote backend sends. Lets self-hosted gateways
+ * that demand more than a Bearer token (attribution headers, tenant IDs,
+ * proxy auth) work with stock backends.
+ */
+function extraHeaders(env: Record<string, string | undefined>):
+  | Record<string, string>
+  | undefined {
+  const raw = env.JEV_EXTRA_HEADERS;
+  if (!raw) return undefined;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new Error("JEV_EXTRA_HEADERS must be a JSON object.");
+  }
+  if (
+    parsed === null ||
+    typeof parsed !== "object" ||
+    Array.isArray(parsed) ||
+    Object.values(parsed).some((value) => typeof value !== "string")
+  ) {
+    throw new Error("JEV_EXTRA_HEADERS must be a JSON object of string values.");
+  }
+  return parsed as Record<string, string>;
+}
+
 function typesafe(env: Record<string, string | undefined>): TypeSafeBackend {
   const apiKey = env.TYPESAFE_API_KEY ?? env.TYPESAFE_AI_API_KEY;
   if (!apiKey) throw new Error("JEV_BACKEND=typesafe needs TYPESAFE_API_KEY.");
@@ -79,6 +107,7 @@ function typesafe(env: Record<string, string | undefined>): TypeSafeBackend {
     apiKey,
     baseUrl: env.TYPESAFE_BASE_URL,
     defaultModel: env.JEV_MODEL ?? env.TYPESAFE_DEFAULT_MODEL,
+    headers: extraHeaders(env),
   });
 }
 
@@ -89,6 +118,7 @@ function openrouter(env: Record<string, string | undefined>): OpenRouterBackend 
     apiKey,
     baseUrl: env.OPENROUTER_BASE_URL,
     defaultModel: env.JEV_MODEL,
+    headers: extraHeaders(env),
   });
 }
 
@@ -99,6 +129,7 @@ function vercel(env: Record<string, string | undefined>): VercelBackend {
     apiKey,
     baseUrl: env.AI_GATEWAY_BASE_URL,
     defaultModel: env.JEV_MODEL,
+    headers: extraHeaders(env),
   });
 }
 

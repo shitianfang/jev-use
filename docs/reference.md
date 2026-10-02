@@ -179,6 +179,7 @@ are overridable per call: `jev.judge(state, questions, { model })`.
 | `JEV_BACKEND` | auto-detect | `typesafe` \| `openrouter` \| `vercel` \| `mock` |
 | `TYPESAFE_API_KEY` / `OPENROUTER_API_KEY` / `AI_GATEWAY_API_KEY` | — | provider credential; auto-detected in this order |
 | `JEV_MODEL` | provider default (`jev-latest`) | model override |
+| `JEV_EXTRA_HEADERS` | — | JSON object of extra headers sent with every judgment request, for gateways that demand more than a Bearer token (proxy auth, tenant/attribution headers); the provider's own `Authorization` always wins on conflict |
 | `JEV_GATE_THRESHOLD` | per confidence source (`0.5` / `0.4`) | hook-gate escalation threshold, for both sources at once |
 
 Provider dialects: TypeSafe and OpenRouter share the native wire shape
