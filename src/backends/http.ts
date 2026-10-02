@@ -8,6 +8,12 @@ export interface HttpOptions {
   timeoutMs?: number;
   /** Retries on 408/429/5xx and network failures. Default 2. */
   maxRetries?: number;
+  /**
+   * Extra headers sent on every request — proxy auth, tenant/attribution
+   * headers, and the like. The backend's own Authorization always wins on
+   * conflict; these headers cannot silence it.
+   */
+  headers?: Record<string, string>;
 }
 
 const DEFAULT_TIMEOUT_MS = 10_000;
@@ -43,6 +49,7 @@ export async function postJson(
         headers: {
           "Content-Type": "application/json",
           Accept: "application/json",
+          ...options.headers,
           ...headers,
         },
         body: JSON.stringify(body),
