@@ -71,6 +71,14 @@ Anything Jev can't or shouldn't decide comes back with `escalate: true`
 and a typed reason. Tools, verdict shape, escalation contract, CLI:
 [docs/reference.md](docs/reference.md).
 
+For workflows that require a current check and explicit authority before an
+action, inspect those records before consulting the advisory gate. The keyless
+[evidence-review example](examples/evidence-review.mjs) routes missing, stale or
+conflicting records to review without a model call, preserves explicit failures
+as denial, and consults `jev.gate` only when prerequisites are established.
+The caller supplies authoritative records; model confidence cannot establish
+authority. Run it with `npm run build && node examples/evidence-review.mjs`.
+
 ## Small enough to read
 
 | File | Job |
