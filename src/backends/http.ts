@@ -102,6 +102,26 @@ function parseRetryAfter(response: Response): number | undefined {
   }
   const seconds = response.headers.get("retry-after");
   if (seconds && Number.isFinite(Number(seconds))) return Number(seconds) * 1000;
+  if (seconds) {
+    let httpDate = seconds;
+    const legacy = seconds.match(/^([A-Za-z]+, \d{2}-[A-Za-z]{3}-)(\d{2})( \d{2}:\d{2}:\d{2} GMT)$/);
+    if (legacy) {
+      // RFC 850 years use a moving 50-year future window, not JS's fixed pivot.
+      const latest = new Date();
+      latest.setUTCFullYear(latest.getUTCFullYear() + 50);
+      let year = Math.floor(latest.getUTCFullYear() / 100) * 100 + Number(legacy[2]);
+      httpDate = `${legacy[1]}${year}${legacy[3]}`;
+      if (Date.parse(httpDate) > latest.getTime()) {
+        year -= 100;
+        httpDate = `${legacy[1]}${year}${legacy[3]}`;
+      }
+    } else if (/^[A-Za-z]{3} [A-Za-z]{3} {1,2}\d{1,2} \d{2}:\d{2}:\d{2} \d{4}$/.test(seconds)) {
+      // The obsolete asctime form has no zone, but still denotes UTC.
+      httpDate = `${seconds} GMT`;
+    }
+    const date = Date.parse(httpDate);
+    if (Number.isFinite(date)) return Math.max(0, date - Date.now());
+  }
   return undefined;
 }
 
