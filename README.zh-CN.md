@@ -1,6 +1,6 @@
 # jev-use
 
-[English](README.md) | **简体中文**
+[English](README.md) | **简体中文** | [日本語](README.ja.md)
 
 Claude Code / Codex / [pi](https://github.com/badlogic/pi-mono) 与
 [Jev](https://typesafe.ai/blog/introducing-system-one-models-and-jev)
